@@ -1,0 +1,11 @@
+{
+  "name": "cmmc-2.0-control-parser",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "John Haverlack",
+  "license": "MIT",
+  "description": "Parsed CMMC Control Text (Copied from PDF) and converts to JSON, CSV and Markdown formats."
+}
