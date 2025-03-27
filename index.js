@@ -381,7 +381,8 @@ function cmmc_parse() {
 
 
                                             case "CMMC_CONTROL_ID":
-                                                if (domain) {
+                                                let tmp_ctl_id = parts[1] + ".L" + parts[2] + "-" + parts[3];
+                                                if (domain && !controls['CONTROLS'].hasOwnProperty(tmp_ctl_id)) {
                                                     line_match = true;
                                                     control_id_dom_abbr = parts[1];
                                                     control_id_level    = parts[2];
@@ -469,10 +470,10 @@ function cmmc_parse() {
                                 // DEBUG
                                 
                                 if (line_match) {
-                                    console.log();
-                                    console.log("DEBUG: LINE " + (i+1) + ": [" + line + "]")
+                                    // console.log();
+                                    // console.log("DEBUG: LINE " + (i+1) + ": [" + line + "]")
 
-                                    console.log("DEBUG:   MATCHED REGEX:     " + rx + ":       " + `${regx[rx].toString()}`);
+                                    // console.log("DEBUG:   MATCHED REGEX:     " + rx + ":       " + `${regx[rx].toString()}`);
 
                                     // console.log("DEBUG:   DOMAIN:              " + domain);
                                     // console.log("DEBUG:   DOMAIN ABBR:         " + domain_abbr);
@@ -483,11 +484,11 @@ function cmmc_parse() {
                                     // console.log("DEBUG:   CONTROL ID LEVEL:    " + control_id_level);
                                     // console.log("DEBUG:   CONTROL ID REQ:      " + control_id_req);
 
-                                    if (control_id) {
-                                        console.log(JSON.stringify(controls["CONTROLS"][control_id], null, 2));
-                                    }
+                                    // if (control_id) {
+                                    //     console.log(JSON.stringify(controls["CONTROLS"][control_id], null, 2));
+                                    // }
 
-                                    console.log("DEBUG:   ASSMT OBJ FLAG: " + assmt_obj_flag);
+                                    // console.log("DEBUG:   ASSMT OBJ FLAG: " + assmt_obj_flag);
 
                                 }
 
