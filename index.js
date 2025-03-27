@@ -155,6 +155,7 @@ function cmmc_parse() {
     let domain              = '';
     let domain_abbr         = '';
     let level               = '';
+    let tlevel              = '';
     let control_id          = '';
     let control_id_dom_abbr = '';
     let control_id_level    = '';
@@ -162,6 +163,8 @@ function cmmc_parse() {
     let control_id_name     = '';
     let control_id_desc     = '';
     let control_id_flag     = false;
+    let control_name_flag   = false;
+    let control_desc_flag   = false;
     let assmt_obj           = '';
     let assmt_obj_flag      = false;
     let ass_obj_index       = '';
@@ -265,16 +268,99 @@ function cmmc_parse() {
                                     case "PMO": // CMMC Program Model Overview
                                     switch (rx) {
                                         case "CMMC_DOMAIN":
+                                            line_match = true;
                                             domain                  = parts[1];
                                             domain_abbr             = parts[2];
                                             domain_map[domain_abbr] = domain;
                                             break;
 
                                         case "CMMC_LEVEL":
+                                            line_match = true;
                                             level = parts[1];
+                                            tlevel = "L" + level;
                                             break;
-                                    }
+
+                                        case "CMMC_CONTROL_ID":
+                                            if (domain && level) {
+                                                line_match = true;
+                                                control_id_dom_abbr = parts[1];
+                                                control_id_level    = parts[2];
+                                                control_id_req      = parts[3];
+                                                control_id          = control_id_dom_abbr + ".L" + control_id_level + "-" + control_id_req;
+
+                                                control_name_flag   = true;
+                                                control_desc_flag   = false;
+
+                                                if (!controls["CONTROLS"].hasOwnProperty(tlevel)) {
+                                                    controls["CONTROLS"][tlevel] = {}
+                                                }
+
+                                                if (!controls["CONTROLS"][tlevel].hasOwnProperty(control_id)) {
+                                                    controls["CONTROLS"][tlevel][control_id] = {}
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_DOMAIN"]         = domain_map[control_id_dom_abbr];
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_DOMAIN_ABBR"]    = control_id_dom_abbr;
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_LEVEL"]          = control_id_level;
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_ID"]          = control_id;
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"]        = "";
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] = "";
+
+                                                    if (lines[i + 1].match(regx["CONTROL_NAME_W_BRACKETS"])) { 
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i];
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    } else if (lines[i + 1].match(regx["CONTROL_NAME_BEGIN"]) && lines[i + 2].match(regx["CONTROL_NAME_END"])) {
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i] + " " + lines[++i];   
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    } else {
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i];
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    }
+                                                }
+                                            }
                                         break;
+
+                                        // case "CONTROL_NAME_END":
+                                        //     if (control_name_flag) {
+                                        //         line_match = true;
+                                        //         controls["CONTROLS"][control_id]["CONTROL_NAME"] += " " + line;
+                                        //         control_name_flag = false;
+                                        //         control_desc_flag = true;
+                                        //     }
+                                        //     break;
+
+                                        case "PARAGRAPH_LINE":
+                                            // if (control_name_flag) { // Control Name
+                                            //     line_match = true;
+                                            //     controls["CONTROLS"][control_id]["CONTROL_NAME"] += " " + line;
+                                            // } else 
+                                            if (control_desc_flag) { // Control Description
+                                                line_match = true;
+                                                controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] += " " + line;
+                                                controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] =  controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"].trim(); // Remove leading and trailing spaces
+                                            } else {
+                                                // Ignore Line
+                                            }
+
+                                        case "IGNORE_PAGE_NUMBER":
+                                            // console.log("DEBUG:   Skipping Page Nubmer Line");
+                                            break;
+
+                                        case "IGNORE_FOOTER":
+                                            // console.log("DEBUG:   Skipping Footer Line");
+                                            break;
+
+                                        case "IGNORE_WHITESPACE":
+                                                // console.log("DEBUG:   Skipping Whitespace Line");
+                                            break;
+                                                
+                                        default:
+                                            // console.log("DEBUG:   Default Skipping Line");
+                                            break;
+
+                                    } // Close switch
+                                    break;
 
                                     case "L1SG": // CMMC Scoping Guide - Level 1
                                     
@@ -306,8 +392,8 @@ function cmmc_parse() {
                                                     controls["CONTROLS"][control_id]["CMMC_DOMAIN_ABBR"]        = control_id_dom_abbr;
                                                     controls["CONTROLS"][control_id]["CMMC_LEVEL"]              = control_id_level;
                                                     controls["CONTROLS"][control_id]["CONTROL_ID"]              = control_id;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_NAME"]         = control_id_name;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"]  = control_id_desc;
+                                                    controls["CONTROLS"][control_id]["CONTROL_NAME"]         = control_id_name;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]  = control_id_desc;
                                                     controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"]   = {};
                                                 }
                                                 break;
@@ -317,7 +403,7 @@ function cmmc_parse() {
                                                     line_match = true;
                                                     assmt_obj_flag = true;
                                                     control_id_flag = false;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
                                                 }
                                                 break;
                                                 
@@ -339,7 +425,7 @@ function cmmc_parse() {
                                             case "PARAGRAPH_LINE":
                                                 if (control_id && control_id_flag && !assmt_obj_flag) { // Control ID Description
                                                     line_match = true;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"] += " " + line;        
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
                                                 } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) { // Assessment Objective
                                                     line_match = true;
                                                     controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + line;
@@ -359,6 +445,13 @@ function cmmc_parse() {
                                                 // console.log("DEBUG:   Skipping Footer Line");
                                                 break;
 
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                                
                                             default:
                                                 // console.log("DEBUG:   Default Skipping Line");
                                                 break;
@@ -397,8 +490,8 @@ function cmmc_parse() {
                                                     controls["CONTROLS"][control_id]["CMMC_DOMAIN_ABBR"] = control_id_dom_abbr;
                                                     controls["CONTROLS"][control_id]["CMMC_LEVEL"]       = control_id_level;
                                                     controls["CONTROLS"][control_id]["CONTROL_ID"]       = control_id;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_NAME"]  = control_id_name;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"]  = control_id_desc;
+                                                    controls["CONTROLS"][control_id]["CONTROL_NAME"]  = control_id_name;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]  = control_id_desc;
                                                     controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"] = {};
                                                 }
                                                 break;
@@ -408,7 +501,7 @@ function cmmc_parse() {
                                                     line_match = true;
                                                     assmt_obj_flag = true;
                                                     control_id_flag = false;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
                                                 }
                                                 break;
                                                 
@@ -430,7 +523,7 @@ function cmmc_parse() {
                                             case "PARAGRAPH_LINE":
                                                 if (control_id && control_id_flag && !assmt_obj_flag) { // Control ID Description
                                                     line_match = true;
-                                                    controls["CONTROLS"][control_id]["CONTROL_ID_DESCRIPTION"] += " " + line;        
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
                                                 } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) { // Assessment Objective
                                                     line_match = true;
                                                     controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + line;
@@ -448,6 +541,10 @@ function cmmc_parse() {
                                                 // console.log("DEBUG:   Skipping Footer Line");
                                                 break;
 
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                                
                                             default:
                                                 // console.log("DEBUG:   Default Skipping Line");
                                                 break;
@@ -479,6 +576,7 @@ function cmmc_parse() {
                                     // console.log("DEBUG:   DOMAIN ABBR:         " + domain_abbr);
 
                                     // console.log("DEBUG:   LEVEL:               " + level);
+
                                     // console.log("DEBUG:   CONTROL ID:          " + control_id);
                                     // console.log("DEBUG:   CONTROL ID DOM ABBR: " + control_id_dom_abbr);
                                     // console.log("DEBUG:   CONTROL ID LEVEL:    " + control_id_level);
@@ -489,6 +587,8 @@ function cmmc_parse() {
                                     // }
 
                                     // console.log("DEBUG:   ASSMT OBJ FLAG: " + assmt_obj_flag);
+                                    // console.log("DEBUG:   control_name_flag: " + control_id_flag);
+                                    // console.log("DEBUG:   control_desc_flag: " + control_desc_flag);
 
                                 }
 
@@ -500,7 +600,15 @@ function cmmc_parse() {
 
                 } // Close LINE 
 
-                controls['DOCUMENT']["CONTROL_COUNT"] = Object.keys(controls["CONTROLS"]).length;
+                if (controls['DOCUMENT']['ABBR'].match(/^L[1-3]AG$/)) {
+                    controls['DOCUMENT']["CONTROL_COUNT"] = Object.keys(controls["CONTROLS"]).length;                    
+                } else if (controls['DOCUMENT']['ABBR'] == "PMO") {
+                    controls['DOCUMENT']["CONTROL_COUNT"] = {}
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L1"] = Object.keys(controls["CONTROLS"]["L1"]).length;
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L2"] = Object.keys(controls["CONTROLS"]["L2"]).length;
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L3"] = Object.keys(controls["CONTROLS"]["L3"]).length;   
+                }
+                    
 
                 // DEBUG
                 // console.log();

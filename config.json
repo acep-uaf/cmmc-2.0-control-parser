@@ -16,12 +16,18 @@
                         "ZRIN": "ZRIN 0790-ZA17",
                         "OTHER_ID": "24-T-2765",
                         "DATE":"2024-09-01",
-                        "PARSE": false,
+                        "PARSE": true,
                         "REGEX": {
                             "CMMC_DOMAIN":"^([A-Z\\s]+) \\(([A-Z]{2})\\)$",
                             "CMMC_LEVEL":"^Level ([1-3]) Description$",
-                            "CMMC_CONTROL_ID":"^([A-Z]{2})\\.L([1-3])\\-([0-9a-z]\\.[0-9]+\\.[0-9a-z]+)$",
-                            "IGNORE_FOOTER":"^Cybersecurity Maturity Model Certification"
+                            "CMMC_CONTROL_ID":"^([A-Z]{2})\\.L([1-3])\\-([A-Za-z0-9]+\\.[0-9]+\\.[A-Za-z0-9]+)$",
+                            "PARAGRAPH_LINE":"^(\\S.*)$",
+                            "CONTROL_NAME_W_BRACKETS":"^\\S+.*\\[(.*)\\]$",
+                            "CONTROL_NAME_BEGIN":"^\\S+.*\\[",
+                            "CONTROL_NAME_END":"^\\S+\\]$",
+                            "IGNORE_FOOTER":"^Cybersecurity Maturity Model Certification",
+                            "IGNORE_PAGE_NUMBER":"^[0-9]{1,4}$",
+                            "IGNORE_WHITESPACE":"^$"
                         }                    
                     },
                     "CMMC Scoping Guide -  Level 1" :{

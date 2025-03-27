@@ -16,8 +16,8 @@
       "CMMC_DOMAIN_ABBR": "AC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "AC.L1-B.1.I",
-      "CONTROL_ID_NAME": "AUTHORIZED ACCESS CONTROL [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Limit   information   system   access   to   authorized   users,   processes   acting   on   behalf   of authorized users, or devices (including other information systems).",
+      "CONTROL_NAME": "AUTHORIZED ACCESS CONTROL [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Limit   information   system   access   to   authorized   users,   processes   acting   on   behalf   of authorized users, or devices (including other information systems).",
       "ASSESSMENT_OBJECTIVES": {
         "a": "authorized users are identified;",
         "b": "processes acting on behalf of authorized users are identified;",
@@ -32,8 +32,8 @@
       "CMMC_DOMAIN_ABBR": "AC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "AC.L1-B.1.II",
-      "CONTROL_ID_NAME": "TRANSACTION & FUNCTION CONTROL [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Limit information system access to the types of transactions and functions that authorized users are permitted to execute.",
+      "CONTROL_NAME": "TRANSACTION & FUNCTION CONTROL [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Limit information system access to the types of transactions and functions that authorized users are permitted to execute.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "the types of transactions and functions that authorized users are permitted to execute are defined; and",
         "b": "system access is limited to the defined types of transactions and functions for authorized users."
@@ -44,8 +44,8 @@
       "CMMC_DOMAIN_ABBR": "AC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "AC.L1-B.1.III",
-      "CONTROL_ID_NAME": "EXTERNAL CONNECTIONS [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Verify and control/limit connections to and use of external information systems.",
+      "CONTROL_NAME": "EXTERNAL CONNECTIONS [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Verify and control/limit connections to and use of external information systems.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "connections to external systems are identified;",
         "b": "the use of external systems is identified;",
@@ -60,8 +60,8 @@
       "CMMC_DOMAIN_ABBR": "AC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "AC.L1-B.1.IV",
-      "CONTROL_ID_NAME": "CONTROL PUBLIC INFORMATION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Control information posted or processed on publicly accessible information systems.",
+      "CONTROL_NAME": "CONTROL PUBLIC INFORMATION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Control information posted or processed on publicly accessible information systems.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "individuals authorized to post or process information on publicly accessible systems are identified;",
         "b": "procedures to ensure [FCI] is not posted or processed on publicly accessible systems are identified;",
@@ -75,8 +75,8 @@
       "CMMC_DOMAIN_ABBR": "IA",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "IA.L1-B.1.V",
-      "CONTROL_ID_NAME": "IDENTIFICATION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Identify information system users, processes acting on behalf of users, or devices.",
+      "CONTROL_NAME": "IDENTIFICATION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Identify information system users, processes acting on behalf of users, or devices.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "system users are identified;",
         "b": "processes acting on behalf of users are identified; and",
@@ -88,8 +88,8 @@
       "CMMC_DOMAIN_ABBR": "IA",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "IA.L1-B.1.VI",
-      "CONTROL_ID_NAME": "AUTHENTICATION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Authenticate (or verify) the identities of those users, processes, or devices, as a prerequisite to allowing access to organizational information systems.",
+      "CONTROL_NAME": "AUTHENTICATION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Authenticate (or verify) the identities of those users, processes, or devices, as a prerequisite to allowing access to organizational information systems.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "the identity of each user is authenticated or verified as a prerequisite to system access;",
         "b": "the identity of each process acting on behalf of a user is authenticated or verified as a prerequisite to system access; and",
@@ -101,8 +101,8 @@
       "CMMC_DOMAIN_ABBR": "MP",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "MP.L1-B.1.VII",
-      "CONTROL_ID_NAME": "MEDIA DISPOSAL [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Sanitize  or  destroy  information system media  containing  Federal  Contract  Information before disposal or release for reuse.",
+      "CONTROL_NAME": "MEDIA DISPOSAL [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Sanitize  or  destroy  information system media  containing  Federal  Contract  Information before disposal or release for reuse.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "system media containing [FCI] is sanitized or destroyed before disposal; and",
         "b": "system media containing [FCI] is sanitized before it is released for reuse."
@@ -113,8 +113,8 @@
       "CMMC_DOMAIN_ABBR": "PE",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "PE.L1-B.1.VIII",
-      "CONTROL_ID_NAME": "LIMIT PHYSICAL ACCESS [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Limit physical access to organizational information systems, equipment, and the respective operating environments to authorized individuals.",
+      "CONTROL_NAME": "LIMIT PHYSICAL ACCESS [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Limit physical access to organizational information systems, equipment, and the respective operating environments to authorized individuals.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "authorized individuals allowed physical access are identified;",
         "b": "physical access to organizational systems is limited to authorized individuals;",
@@ -127,8 +127,8 @@
       "CMMC_DOMAIN_ABBR": "PE",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "PE.L1-B.1.IX",
-      "CONTROL_ID_NAME": "MANAGE VISITORS & PHYSICAL ACCESS [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Escort  visitors  and  monitor  visitor  activity;  maintain  audit  logs  of  physical  access;  and control and manage physical access devices.",
+      "CONTROL_NAME": "MANAGE VISITORS & PHYSICAL ACCESS [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Escort  visitors  and  monitor  visitor  activity;  maintain  audit  logs  of  physical  access;  and control and manage physical access devices.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "visitors are escorted;",
         "b": "visitor activity is monitored;",
@@ -143,8 +143,8 @@
       "CMMC_DOMAIN_ABBR": "SC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SC.L1-B.1.X",
-      "CONTROL_ID_NAME": "BOUNDARY PROTECTION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Monitor, control, and protect organizational communications (i.e., information transmitted or  received  by  organizational  information  systems)  at  the  external  boundaries  and  key internal boundaries of the information systems.",
+      "CONTROL_NAME": "BOUNDARY PROTECTION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Monitor, control, and protect organizational communications (i.e., information transmitted or  received  by  organizational  information  systems)  at  the  external  boundaries  and  key internal boundaries of the information systems.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "the external system boundary is defined;",
         "b": "key internal system boundaries are defined;",
@@ -161,8 +161,8 @@
       "CMMC_DOMAIN_ABBR": "SC",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SC.L1-B.1.XI",
-      "CONTROL_ID_NAME": "PUBLIC-ACCESS SYSTEM SEPARATION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Implement  subnetworks  for  publicly  accessible  system  components  that  are  physically  or logically separated from internal networks.",
+      "CONTROL_NAME": "PUBLIC-ACCESS SYSTEM SEPARATION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Implement  subnetworks  for  publicly  accessible  system  components  that  are  physically  or logically separated from internal networks.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "publicly accessible system components are identified; and",
         "b": "subnetworks for publicly accessible system components are physically or logically separated from internal networks."
@@ -173,8 +173,8 @@
       "CMMC_DOMAIN_ABBR": "SI",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SI.L1-B.1.XII",
-      "CONTROL_ID_NAME": "FLAW REMEDIATION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Identify, report, and correct information and information system flaws in a timely manner.",
+      "CONTROL_NAME": "FLAW REMEDIATION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Identify, report, and correct information and information system flaws in a timely manner.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "the time within which to identify system flaws is specified;",
         "b": "system flaws are identified within the specified time frame;",
@@ -189,8 +189,8 @@
       "CMMC_DOMAIN_ABBR": "SI",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SI.L1-B.1.XIII",
-      "CONTROL_ID_NAME": "MALICIOUS CODE PROTECTION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Provide  protection  from  malicious  code  at  appropriate  locations  within  organizational information systems.",
+      "CONTROL_NAME": "MALICIOUS CODE PROTECTION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Provide  protection  from  malicious  code  at  appropriate  locations  within  organizational information systems.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "designated locations for malicious code protection are identified; and",
         "b": "protection from malicious code at designated locations is provided."
@@ -201,8 +201,8 @@
       "CMMC_DOMAIN_ABBR": "SI",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SI.L1-B.1.XIV",
-      "CONTROL_ID_NAME": "UPDATE MALICIOUS CODE PROTECTION [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Update malicious code protection mechanisms when new releases are available.",
+      "CONTROL_NAME": "UPDATE MALICIOUS CODE PROTECTION [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Update malicious code protection mechanisms when new releases are available.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "malicious code protection mechanisms are updated when new releases are available."
       }
@@ -212,8 +212,8 @@
       "CMMC_DOMAIN_ABBR": "SI",
       "CMMC_LEVEL": "1",
       "CONTROL_ID": "SI.L1-B.1.XV",
-      "CONTROL_ID_NAME": "SYSTEM & FILE SCANNING [FCI DATA]",
-      "CONTROL_ID_DESCRIPTION": "Perform periodic scans of the information system and real-time scans of files from external sources as files are downloaded, opened, or executed.",
+      "CONTROL_NAME": "SYSTEM & FILE SCANNING [FCI DATA]",
+      "CONTROL_DESCRIPTION": "Perform periodic scans of the information system and real-time scans of files from external sources as files are downloaded, opened, or executed.",
       "ASSESSMENT_OBJECTIVES": {
         "a": "the frequency for malicious code scans is defined;",
         "b": "malicious code scans are performed with the defined frequency; and",
