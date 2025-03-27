@@ -1,12 +1,37 @@
-# CMMC_2.0 Control Parser
+# cmmc-2.0-control-parser
 
-A JavaScript script that reads the content of a text file taken on the command line as the first argument.
-And parses each line of the text file which contains CMMC v2.0 Controls that have been copied from the published PDF (https://dodcio.defense.gov/Portals/0/Documents/CMMC/ModelOverviewv2.pdf) Page 6-17.
-
-Parses lines and extracts the CMMC Control Set into a JSON object and outputs to JSON and CSV file format.
+This script will parse CMMC PDF documents and converts control set data to JSON, CSV and Markdown formats.
 
 # Usage
 
+## Install Deps
+
+Run this once after cloning this repository
+
 ```
-node index.js CMMC_2.0_L1-3_Controls.txt
+npm install
 ```
+
+## Initializing Source Data
+
+Run this to download and process PDFs to text files
+
+```
+npm init
+```
+
+## Parsing PDF's for CMMC Controls
+
+Run this to parse PDF Text for CMMC Controls
+
+```
+npm parse
+```
+
+# Notes
+CMMC_CONTROL_ID This subsection itemizes the security requirements for each domain and at each level. Each
+requirement has a requirement identification number in the format – DD.L#-REQ – where:
+- DD is the two-letter domain abbreviation;
+- L# is the level number; and
+- REQ is the FAR Clause 52.204-21 paragraph number, NIST SP 800-171 Rev 2, or NIST SP
+800-172 security requirement number.

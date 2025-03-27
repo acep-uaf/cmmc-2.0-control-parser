@@ -1,11 +1,19 @@
 {
   "name": "cmmc-2.0-control-parser",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "init": "node index.js init",
+    "parse": "node index.js parse",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "John Haverlack",
   "license": "MIT",
-  "description": "Parsed CMMC Control Text (Copied from PDF) and converts to JSON, CSV and Markdown formats."
+  "description": "Parsed CMMC Control Text (Copied from PDF) and converts to JSON, CSV and Markdown formats.",
+  "dependencies": {
+    "node-fetch": "^2.7.0",
+    "pdf-parse": "^1.1.1",
+    "pdf2json": "^3.1.5"
+  }
 }
