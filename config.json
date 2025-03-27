@@ -9,6 +9,7 @@
             "2.13": {              
                 "DOCUMENTS": {
                     "CMMC Program Model Overview":{
+                        "ABBR":"PMO",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/ModelOverviewv2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00001",
@@ -17,40 +18,55 @@
                         "DATE":"2024-09-01",
                         "PARSE": false,
                         "REGEX": {
-                            "CMMC_DOMAIN":"^([A-Z\\s]+) \\(([A-Z]{2})\\)\\s*$",
-                            "CMMC_LEVEL":"^Level ([1-3]) Description\\s*$",
-                            "CMMC_CONTROL_ID":"^([A-Z]{2})\\.L([1-3])\\-([0-9a-z]\\.[0-9]+\\.[0-9a-z]+)\\s*$",
+                            "CMMC_DOMAIN":"^([A-Z\\s]+) \\(([A-Z]{2})\\)$",
+                            "CMMC_LEVEL":"^Level ([1-3]) Description$",
+                            "CMMC_CONTROL_ID":"^([A-Z]{2})\\.L([1-3])\\-([0-9a-z]\\.[0-9]+\\.[0-9a-z]+)$",
                             "IGNORE_FOOTER":"^Cybersecurity Maturity Model Certification"
                         }                    
                     },
                     "CMMC Scoping Guide -  Level 1" :{
+                        "ABBR":"L1SG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/ScopingGuideL1v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00005",
                         "ZRIN": "ZRIN 0790-ZA21",
                         "OTHER_ID": "24-T-2769",
                         "DATE":"2024-09-01",
-                        "PARSE": true
+                        "PARSE": false
                     },
                     "CMMC Assessment Guide - Level 1":{
+                        "ABBR":"L1AG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/AssessmentGuideL1v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00002",
                         "ZRIN": "ZRIN 0790-ZA18",
                         "OTHER_ID": "24-T-2764",
                         "DATE":"2024-09-01",
-                        "PARSE": true
+                        "PARSE": false,
+                        "REGEX": {
+                            "CMMC_DOMAIN":"^([A-Za-z\\s]+)\\s+\\(([A-Z]{2})\\)$",
+                            "CMMC_CONTROL_ID": "^([A-Z]{2})\\.L([1-3])\\-([A-Z0-9]+\\.[0-9]+\\.[A-Z0-9]+)\\s+[–-]\\s+([\\w\\s\\[\\]&:()\\/\\-,]+)$",
+                            "ASSESSEMENT_OBJECTIVES_BEGIN": "^ASSESSMENT\\sOBJECTIVES",
+                            "ASSESSEMENT_OBJECTIVE":"^\\[([a-z])\\]\\.?\\s+(.*)$",
+                            "ASSESSEMENT_OBJECTIVES_END":"^POTENTIAL\\sASSESSMENT\\sMETHODS AND\\sOBJECTS",
+                            "PARAGRAPH_LINE":"^(\\S.*)$",
+                            "IGNORE_FOOTER":"^CMMC Assessment Guide - Level 2",
+                            "IGNORE_PAGE_NUMBER":"^[0-9]{1,4}$",
+                            "IGNORE_WHITESPACE":"^$"
+                        } 
                     },
                     "CMMC Scoping Guide - Level 2":{
+                        "ABBR":"L2SG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/ScopingGuideL2v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00006",
                         "ZRIN": "ZRIN 0790-ZA22",
                         "OTHER_ID": "24-T-2770",
                         "DATE":"2024-09-01",
-                        "PARSE": true
+                        "PARSE": false
                     },
                     "CMMC Assessment Guide - Level 2":{
+                        "ABBR":"L2AG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/AssessmentGuideL2v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00003",
@@ -59,34 +75,36 @@
                         "DATE":"2024-09-01",
                         "PARSE": true,
                         "REGEX": {
-                            "CMMC_DOMAIN":"^([A-Za-z\\s]+)\\s+\\(([A-Z]{2})\\)\\s*$",
-                            "L2_ASMTGD_CONTROL_ID": "^([A-Z]{2})\\.L([1-3])\\-([0-9]+\\.[0-9]+\\.[0-9]+)\\s+[–-]\\s+(?!.*[.]{3,}|[0-9]{1,4}\\s*$)(.+?)\\s*$",
-                            "L2_ASMTGD_ASSESSEMENT_OBJECTIVES_BEGIN": "^ASSESSMENT\\sOBJECTIVES",
-                            "L2_ASMTGD_ASSESSEMENT_OBJECTIVE":"^\\[([a-z])\\]\\s+(.*?)\\s*(?:[;.])?\\s*(?:and\\s*)?$",
-                            "L2_ASMTGD_ASSESSEMENT_OBJECTIVES_END":"^POTENTIAL\\sASSESSMENT\\sMETHODS AND\\sOBJECTS",
+                            "CMMC_DOMAIN":"^([A-Za-z\\s]+)\\s+\\(([A-Z]{2})\\)$",
+                            "CMMC_CONTROL_ID": "^([A-Z]{2})\\.L([1-3])\\-([A-Z0-9]+\\.[0-9]+\\.[A-Z0-9]+)\\s+[–-]\\s+([\\w\\s\\[\\]&:()\\/\\-,]+)$",
+                            "ASSESSEMENT_OBJECTIVES_BEGIN": "^ASSESSMENT\\sOBJECTIVES",
+                            "ASSESSEMENT_OBJECTIVE":"^\\[([a-z])\\]\\.?\\s+(.*)$",
+                            "ASSESSEMENT_OBJECTIVES_END":"^POTENTIAL\\sASSESSMENT\\sMETHODS AND\\sOBJECTS",
                             "PARAGRAPH_LINE":"^(\\S.*)$",
                             "IGNORE_FOOTER":"^CMMC Assessment Guide - Level 2",
-                            "IGNORE_PAGE_NUMBER":"^[0-9]{1,4}\\s*$",
-                            "IGNORE_WHITESPACE":"^\\s*$"
+                            "IGNORE_PAGE_NUMBER":"^[0-9]{1,4}$",
+                            "IGNORE_WHITESPACE":"^$"
                         } 
                     },
                     "CMMC Scoping Guide - Level 3":{
+                        "ABBR":"L3SG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/ScopingGuideL3v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00007",
                         "ZRIN": "ZRIN 0790-ZA23",
                         "OTHER_ID": "24-T-2771",
                         "DATE":"2024-09-01",
-                        "PARSE": true
+                        "PARSE": false
                     },
                     "CMMC Assessment Guide - Level 3":{
+                        "ABBR":"L3SG",
                         "URL":"https://dodcio.defense.gov/Portals/0/Documents/CMMC/AssessmentGuideL3v2.pdf",
                         "VERSION":"2.13",
                         "DoD_ID": "DoD-CIO-00004",
                         "ZRIN": "ZRIN 0790-ZA20",
                         "OTHER_ID": "24-T-2767",
                         "DATE":"2024-09-01",
-                        "PARSE": true
+                        "PARSE": false
                     }
                 }
             }
