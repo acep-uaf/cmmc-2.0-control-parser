@@ -830,29 +830,141 @@ function cmmc_gen_ag_csv(controls) {
     console.log("INFO: to: " + controls['DOCUMENT']['FILE']['CSV']);
 
     let csv = "";
-    let csv_columns = ["CMMC_LEVEL", "CMMC_DOMAIN_ABBR", "CMMC_DOMAIN", "CONTROL_ID", "CONTROL_NAME", , "ASSESSMENT_OBJECTIVE", "ASSESSMENT_OBJECTIVE_DESCRIPTION"];
+    let csv_columns = ["CTRL_INDEX", "ASMT_OBJ_INDEX", "CMMC_LEVEL", "CMMC_DOMAIN_ABBR", "CMMC_DOMAIN", "CONTROL_ID", "CONTROL_NAME", "ASSESSMENT_OBJECTIVE", "ASSESSMENT_OBJECTIVE_DESCRIPTION"];
 
-    for (let cid in controls['CONTROLS']) {
-        if (cid == Object.keys(controls['CONTROLS'])[0]) {
-            for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
-                // if First control and first assessment objective then add header
-                if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
-                    // "", delmiter CSV Header"
-                    for (let col in csv_columns) {
-                        csv += "\"" + csv_columns[col] + "\",";
-                    }
-                    // Remove last comma
-                    csv = csv.slice(0, -1);
-                    csv += "\n";
-                }
-
-                for (let col in csv_columns) {
-
-                }
-            }
-        } 
+    let col_map = {
+        "CTRL_INDEX"            : "Control Index",
+        "ASMT_OBJ_INDEX"        : "Assessment Objective Index",
+        "CMMC_LEVEL"            : "CMMC Level",
+        "CMMC_DOMAIN_ABBR"      : "CMMC Domain Abbreviation",
+        "CMMC_DOMAIN"           : "CMMC Domain",
+        "CONTROL_ID"            : "Control ID",
+        "CONTROL_NAME"          : "Control Name",
+        "ASSESSMENT_OBJECTIVE"  : "Assessment Objective",
+        "ASSESSMENT_OBJECTIVE_DESCRIPTION"  : "Assessment Objective Description",
     }
 
+    // Debug
+    // console.log("DEBUG: " + Object.keys(controls['CONTROLS']));
+    // for (let cid in controls['CONTROLS']) {
+    //     console.log("DEBUG: " + cid);
+    //     console.log("DEBUG: " + Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']));
+    //     for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+    //         console.log("DEBUG: " + cid + " - " + ao);
+    //     }
+    // }
+
+    // Header Line
+    for (let col in csv_columns) {
+        // csv += "\"" + csv_columns[col] + "\",";
+        csv += "\"" + col_map[csv_columns[col]] + "\",";
+    }
+    // Remove last comma
+    csv = csv.slice(0, -1);
+    csv += "\n";
+
+    let ctl_idx = 0;
+    let ao_idx  = 0;
+    let first_ao = false;
+
+    for (let cid in controls['CONTROLS']) {
+        ctl_idx++;
+        for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+            ao_idx++;
+            console.log("DEBUG: " + ctl_idx + " - " + ao_idx + " - " + cid + " - " + ao);
+
+            if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                first_ao = true;
+            } else {
+                first_ao = false;
+            }
+
+            for (let col in csv_columns) {
+                console.log("DEBUG: " + col + " - " + csv_columns[col]);
+                if (first_ao) {
+                    switch ( csv_columns[col] ) {
+                        case "CTRL_INDEX":
+                            csv += "\"" + ctl_idx + "\",";
+                            break;
+
+                        case "ASMT_OBJ_INDEX":
+                            csv += "\"" + ao_idx + "\",";
+                            break;
+
+                        case "CMMC_LEVEL":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_LEVEL'] + "\",";
+                            break;
+
+                        case "CMMC_DOMAIN_ABBR":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_DOMAIN_ABBR'] + "\",";
+                            break;
+
+                        case "CMMC_DOMAIN":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_DOMAIN'] + "\",";
+                            break;
+
+                        case "CONTROL_ID":
+                            csv += "\"" + cid + "\",";
+                            break;
+
+                        case "CONTROL_NAME":
+                            csv += "\"" + controls['CONTROLS'][cid]['CONTROL_NAME'] + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE":
+                            csv += "\"" + ao + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE_DESCRIPTION":
+                            csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                            break;
+                    }
+                } else {
+                    switch ( csv_columns[col] ) {
+                        case "ASMT_OBJ_INDEX":
+                            csv += "\"" + ao_idx + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE":
+                            csv += "\"" + ao + "\",";
+                            break;
+
+                            case "ASSESSMENT_OBJECTIVE_DESCRIPTION":
+                            csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                            break;
+
+                        default:
+                            csv += "\"\",";
+                    }
+                }
+
+
+
+                // if ( col <= 1 ) {
+                //     if (col == 0) {
+                //         if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                //             csv += "\"" + ctl_idx + "\",";
+                //         }
+                //     } else if (col == 1) {
+                //         csv += "\"" + ao_idx + "\",";
+                //     }
+                // } else if (col <= 6) {
+                //     if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                //         // "", delmiter CSV Header"
+                //         csv += "\"" + controls['CONTROLS'][cid][csv_columns[col]] + "\",";
+                //     } else {
+                //         csv += "\"\",";
+                //     }
+                // } else {
+                //     if (col == 7) {
+                //         csv += "\"" + ao + "\",";
+                //     } else if (col == 8) {
+                //         csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                //     }
+                // }
+            }
+        }
+    }
 
     try {
         fs.writeFileSync(controls['DOCUMENT']['FILE']['CSV'], csv);
