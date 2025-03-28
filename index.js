@@ -684,13 +684,16 @@ function cmmc_gendocs() {
                     cmmc_gen_pmo_md(controls[ver][abbr]);
                     break;
                 case "L1AG":
-                    // cmmc_gendocs_l1ag(controls[ver][doc]);
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
                     break;
                 case "L2AG":
-                    // cmmc_gendocs_l2ag(controls[ver][doc]);
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
                     break;
                 case "L3AG":
-                    // cmmc_gendocs_l3ag(controls[ver][doc]);
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
                     break;
             }
         }
@@ -699,9 +702,9 @@ function cmmc_gendocs() {
 }
 
 function cmmc_gen_pmo_md(controls) {
+    // console.log(JSON.stringify(controls, null, 2));
     console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " Markdown");
     console.log("INFO: to: " + controls['DOCUMENT']['FILE']['MD']);
-    console.log(JSON.stringify(controls, null, 2));
 
     let md = "";
 
@@ -764,6 +767,96 @@ function cmmc_gen_pmo_md(controls) {
     try {
         fs.writeFileSync(controls['DOCUMENT']['FILE']['MD'], md);
         console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['MD']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}
+
+function cmmc_gen_ag_md(controls) {    
+    // console.log(JSON.stringify(controls, null, 2));
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " Markdown");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['MD']);
+
+    let md = "";
+
+    md += "# " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "\n";
+    md += "- **TITLE:**     " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "- **FRAMEWORK:** " + controls['DOCUMENT']['CMMC'] + "\n";
+    md += "- **VERSION:**   " + controls['DOCUMENT']['CMMC_VERSION'] + "\n";
+    md += "- **DATE:**      " + controls['DOCUMENT']['DATE'] + "\n";
+    md += "- **ZRIN:**      " + controls['DOCUMENT']['ZRIN'] + "\n";
+    md += "- **OTHER_ID:**  " + controls['DOCUMENT']['OTHER_ID'] + "\n";
+    md += "- **URL:**       " + controls['DOCUMENT']['URL'] + "\n";
+    md += "- **Control Couts:** " + controls['DOCUMENT']['CONTROL_COUNT'] + "\n";
+    md += "\n";
+
+    md += "# Controls\n";
+    md += "\n";
+
+    for (let cid in controls['CONTROLS']) {
+        // If first control then add domain header
+        if (cid == Object.keys(controls['CONTROLS'])[0]) {
+            md += "## " + controls['CONTROLS'][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+            md += "\n";
+        }
+
+        md += "#### " + cid + " - " + controls['CONTROLS'][cid]['CONTROL_NAME'] + "\n";
+        md += "\n";
+        md += controls['CONTROLS'][cid]['CONTROL_DESCRIPTION']
+        md += "\n";
+
+        // ASSESSMENT OBJECTIVES
+        md += "##### Assessment Objectives\n";
+        for (let ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+            md += "[**" + ao + "**] - " + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\n";
+            md += "\n";
+        }
+    }
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['MD'], md);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['MD']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}
+
+
+
+function cmmc_gen_ag_csv(controls) {
+    // console.log(JSON.stringify(controls, null, 2));
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " CSV");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['CSV']);
+
+    let csv = "";
+    let csv_columns = ["CMMC_LEVEL", "CMMC_DOMAIN_ABBR", "CMMC_DOMAIN", "CONTROL_ID", "CONTROL_NAME", , "ASSESSMENT_OBJECTIVE", "ASSESSMENT_OBJECTIVE_DESCRIPTION"];
+
+    for (let cid in controls['CONTROLS']) {
+        if (cid == Object.keys(controls['CONTROLS'])[0]) {
+            for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+                // if First control and first assessment objective then add header
+                if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                    // "", delmiter CSV Header"
+                    for (let col in csv_columns) {
+                        csv += "\"" + csv_columns[col] + "\",";
+                    }
+                    // Remove last comma
+                    csv = csv.slice(0, -1);
+                    csv += "\n";
+                }
+
+                for (let col in csv_columns) {
+
+                }
+            }
+        } 
+    }
+
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['CSV'], csv);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['CSV']);
     } catch (err) {
         console.error(`STATUS: ❌ ERROR: ${err.message}`);      
     }
