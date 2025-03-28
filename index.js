@@ -39,6 +39,9 @@ switch (config.MODE) {
     case "parse":
         cmmc_parse();
         break;
+    case "gendocs":
+        cmmc_gendocs();
+        break;
     default:
         cmmc_useage();
         break;
@@ -317,6 +320,10 @@ function cmmc_parse() {
                                                         control_name_flag = false;
                                                         control_desc_flag = true;
                                                     }
+
+                                                    // Remove leading and trailing whitespace
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"].trim();
+
                                                 }
                                             }
                                         break;
@@ -629,3 +636,135 @@ function cmmc_parse() {
     }  // Close CMMC Version
 
 } // Close Parse Function
+
+
+
+function cmmc_gendocs() {
+    // Read JSON Files for PARSE = true documents and generate CSV and Markdown files
+    console.log("INFO: ====== Generating Documents ======");
+
+    // Vars
+
+    let controls = {};
+
+    for (let ver in config.CMMC.VERSIONS) {
+        controls[ver] = {};
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {            
+            if (config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['PARSE'] == true) {
+                // Read JSON File to controls object
+                try {
+                    let json = JSON.parse(fs.readFileSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON'], 'utf-8'));
+                    console.log(`STATUS: ✅ READ: ` + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON']);
+
+                    controls[ver][ json['DOCUMENT']['ABBR'] ] = {};
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['DOCUMENT'] = json['DOCUMENT'];
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['DOCUMENT']['FILE'] = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['CONTROLS'] = json['CONTROLS'];
+
+
+                } catch (err) {
+                    console.error(`STATUS: ❌ ERROR: ${err.message}`);
+                }
+            }
+        }
+    }
+
+    // console.log(JSON.stringify(controls, null, 2));
+
+
+    // Generate CSV File for Documents
+
+    // Generate Markdown File for Documents
+
+    for (let ver in config.CMMC.VERSIONS) {
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
+            let abbr = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['ABBR'];
+            switch (abbr) {
+                case "PMO":
+                    cmmc_gen_pmo_md(controls[ver][abbr]);
+                    break;
+                case "L1AG":
+                    // cmmc_gendocs_l1ag(controls[ver][doc]);
+                    break;
+                case "L2AG":
+                    // cmmc_gendocs_l2ag(controls[ver][doc]);
+                    break;
+                case "L3AG":
+                    // cmmc_gendocs_l3ag(controls[ver][doc]);
+                    break;
+            }
+        }
+    }
+
+}
+
+function cmmc_gen_pmo_md(controls) {
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " Markdown");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['MD']);
+    console.log(JSON.stringify(controls, null, 2));
+
+    let md = "";
+
+    md += "# " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "\n";
+    md += "- **TITLE:**     " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "- **FRAMEWORK:** " + controls['DOCUMENT']['CMMC'] + "\n";
+    md += "- **VERSION:**   " + controls['DOCUMENT']['CMMC_VERSION'] + "\n";
+    md += "- **DATE:**      " + controls['DOCUMENT']['DATE'] + "\n";
+    md += "- **ZRIN:**      " + controls['DOCUMENT']['ZRIN'] + "\n";
+    md += "- **OTHER_ID:**  " + controls['DOCUMENT']['OTHER_ID'] + "\n";
+    md += "- **URL:**       " + controls['DOCUMENT']['URL'] + "\n";
+    md += "\n";
+
+    md += "## Control Counts\n";
+    md += "- **Level 1:** " + controls['DOCUMENT']['CONTROL_COUNT']["L1"] + " Controls\n";
+    md += "- **Level 2:** " + controls['DOCUMENT']['CONTROL_COUNT']["L2"] + " Controls\n";
+    md += "- **Level 3:** " + controls['DOCUMENT']['CONTROL_COUNT']["L3"] + " Controls\n";
+    md += "\n";
+
+    md += "## Controls\n";
+    md += "\n";
+
+
+    let levels = ["L1", "L2", "L3"];
+    for (let l in levels) {
+        if (l > 0) {
+            md += "---\n";
+        }
+        md += "### Level " + levels[l] + "\n";
+        md += "\n";
+
+        // md += "#### " + controls['CONTROLS'][ levels[l] ][ Object.keys(controls['CONTROLS'][ levels[l] ])[0] ]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][ Object.keys(controls['CONTROLS'][ levels[l] ])[0] ]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+    
+        for (let cid in controls['CONTROLS'][levels[l]]) {
+            // If first control then add domain header
+            if (cid == Object.keys(controls['CONTROLS'][ levels[l] ])[0]) {
+                md += "#### " + controls['CONTROLS'][ levels[l] ][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+                md += "\n";
+
+            }
+
+            md += "##### " + cid + " - " + controls['CONTROLS'][ levels[l] ][cid]['CONTROL_NAME'] + "\n";
+            // md += "- **Name:** " + controls['CONTROLS'][ levels[l] ][cid]['CONTROL_NAME'] + "\n";
+            // md += "- **Domain:** " + controls['CONTROLS'][ levels[l] ][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+
+            md += "\n";
+            // md += "**Description**" + "\n";
+            md += "###### Description" + "\n";
+
+            md += "\n";
+            md += controls['CONTROLS'][ levels[l] ][cid]['CONTROL_DESCRIPTION']
+
+            md += "\n";
+            md += "\n";
+        }
+    }
+
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['MD'], md);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['MD']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}

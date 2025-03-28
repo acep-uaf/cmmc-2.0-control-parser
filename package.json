@@ -6,6 +6,7 @@
     "start": "node index.js",
     "setup": "node index.js setup",
     "parse": "node index.js parse",
+    "gendocs": "node index.js gendocs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "John Haverlack",

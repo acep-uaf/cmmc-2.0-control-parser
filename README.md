@@ -28,6 +28,14 @@ Run this to parse PDF Text for CMMC Controls
 npm parse
 ```
 
+## Generating Documents
+
+Run this to generate CSV, Markdown and other Document formats
+
+```
+npm gendocs
+```
+
 # Notes
 CMMC_CONTROL_ID This subsection itemizes the security requirements for each domain and at each level. Each
 requirement has a requirement identification number in the format – DD.L#-REQ – where:
