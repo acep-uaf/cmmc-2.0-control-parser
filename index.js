@@ -241,6 +241,9 @@ function cmmc_parse() {
                     // Replace all EN DASH (U+2013) and EM DASH (U+2014) with -
                     line = line.replace(/[\u2013\u2014]/g, '-');
 
+                    // Replace multiple spaces/tabs with a single space
+                    // line = line.replace(/\s{2,}/g, ' ');
+
                     // console.log("DEBUG: LINE " + (i+1) + ": [" + line + "]");
 
                     // For each Regx
@@ -338,17 +341,27 @@ function cmmc_parse() {
                                         //     break;
 
                                         case "PARAGRAPH_LINE":
-                                            // if (control_name_flag) { // Control Name
-                                            //     line_match = true;
-                                            //     controls["CONTROLS"][control_id]["CONTROL_NAME"] += " " + line;
-                                            // } else 
-                                            if (control_desc_flag) { // Control Description
-                                                line_match = true;
-                                                controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] += " " + line;
-                                                controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] =  controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"].trim(); // Remove leading and trailing spaces
-                                            } else {
-                                                // Ignore Line
+                                            // 1. Safety check: Are we accidentally in a section that should end the objective list?
+                                            if (assmt_obj_flag) {
+                                                // Stop if we hit common "End of Objectives" headers found in the PDF
+                                                if (line.match(/POTENTIAL ASSESSMENT METHODS/i) || 
+                                                    line.match(/DISCUSSION/i) || 
+                                                    line.match(/REVISION \d CONTROL/i)) {
+                                                    assmt_obj_flag = false;
+                                                    break; 
+                                                }
                                             }
+                                        
+                                            if (control_id && control_id_flag && !assmt_obj_flag) {
+                                                line_match = true;
+                                                controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
+                                            } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) {
+                                                line_match = true;
+                                                // 2. Add a trim to handle the whitespace issues you saw in your JSON output
+                                                let cleanLine = line.replace(/\s+/g, ' ').trim();
+                                                controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + cleanLine;
+                                            }
+                                            break;
 
                                         case "IGNORE_PAGE_NUMBER":
                                             // console.log("DEBUG:   Skipping Page Nubmer Line");
