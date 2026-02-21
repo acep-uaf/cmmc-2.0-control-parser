@@ -1,252 +1,988 @@
-// A JavaScript script that reads the content of a text file taken on the command line as the first argument.
-// And parses each line of the text file which contains CMMC v2.0 Controls that have been copied from the published PDF (https://dodcio.defense.gov/Portals/0/Documents/CMMC/ModelOverviewv2.pdf) Page 6-17.
-// Parses lines and extracts the CMMC Control Set into a JSON object and outputs to JSON and CSV file format.
+// cmmc-2.0-control-parser
+
+// This script will parse CMMC PDF documents and converts control set data to JSON, CSV and Markdown formats.
 
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const fetch = require('node-fetch');
+const pdfParse = require('pdf-parse');
+const { Console } = require('console');
 
-const filePath = process.argv[2];
-const fileContents = fs.readFileSync(filePath, 'utf-8');
-const lines = fileContents.split('\n');
-
-// Define Regular Expression Patterns
-const patter_map = {
-    "CMMC_DOMAIN":"^([A-Z\\s]+) \\(([A-Z]{2})\\)$",  // e.g. "ACCESS CONTROL (AC)"
-    "CMMC_LEVEL":"^Level\ ([1-3])\ Description$",  // e.g. "Level 1 Description"
-    "CMMC_CONTROL_ID":"^([A-Z]{2})\.L([1-3])\-([0-9a-z]\.[0-9]+\.[0-9a-z]+)$", // e.g. "DD.L#-REQ"
-    "IGNORE_FOOTER":"^Cybersecurity Maturity Model Certification"
-}
-
-// Regular Expression to match:   Cybersecurity Maturity Model Certification (CMMC) Model Overview | Version 2.13 7
-
-// CMMC_CONTROL_ID This subsection itemizes the security requirements for each domain and at each level. Each
-// requirement has a requirement identification number in the format – DD.L#-REQ – where:
-// • DD is the two-letter domain abbreviation;
-// • L# is the level number; and
-// • REQ is the FAR Clause 52.204-21 paragraph number, NIST SP 800-171 Rev 2, or NIST SP
-// 800-172 security requirement number.
-
-// console.log(JSON.stringify(patter_map, null, 2));
+// Load config.json as config object
+let config = JSON.parse(fs.readFileSync('config.json', 'utf-8'));
 
 
-// Vars
-let controls_arry       = [];
-let controls_tree       = {};
-let controls            = {};
-let domains             = {};
-let domain              = '';
-let domain_abbr         = '';
-let level               = '';
-let ctl_idcontrol_id          = '';
-let control_id_dom_abbr = '';
-let control_id_level    = '';
-let control_id_req      = '';
-let control_name        = '';
-let description         = '';
+// Setup Document Paths
+for (let ver in config.CMMC.VERSIONS) {
+    for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
+        let url_parts = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["URL"].split("/");
+        let doc_filename = url_parts.pop();
 
-// Parser
-for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    if (line.match(patter_map["IGNORE_FOOTER"])) {
-        // Ignore Page Footers
-        // console.log("IGNORE_FOOTER: " + line);
-
-    } else if (line.match(patter_map["CMMC_DOMAIN"])) {
-        // Set Domain
-        domain = line.match(patter_map["CMMC_DOMAIN"])[1];
-        domain_abbr = line.match(patter_map["CMMC_DOMAIN"])[2];
-        domains[domain_abbr] = domain;
-
-        // if (control_id) {
-        //     controls[control_id]['DESCRIPTION'] = "";
-        // }
-
-    } else if (line.match(patter_map["CMMC_LEVEL"])) {
-        // Set Level
-        level = line.match(patter_map["CMMC_LEVEL"])[1];
-
-        // if (control_id) {
-        //     controls[control_id]['DESCRIPTION'] = "";
-        // }
-
-    } else if (line.match(patter_map["CMMC_CONTROL_ID"])) {
-        // Set Control ID        
-        control_id_dom_abbr = line.match(patter_map["CMMC_CONTROL_ID"])[1];
-        control_id_level = line.match(patter_map["CMMC_CONTROL_ID"])[2];
-        control_id_req = line.match(patter_map["CMMC_CONTROL_ID"])[3];
-        control_id = control_id_dom_abbr + ".L" + control_id_level + "-" + control_id_req;
-        control_name = lines[++i];
-        description = '';
-
-        controls[control_id] = {};
-        controls[control_id]['CONTROL_ID'] = control_id;
-        controls[control_id]['CONTROL_NAME'] = control_name;
-        controls[control_id]['DOMAIN'] = domains[control_id_dom_abbr];
-        controls[control_id]['DOMAIN_ABBR'] = control_id_dom_abbr;
-        controls[control_id]['LEVEL'] = control_id_level;
-        controls[control_id]['CONTROL_REQUIREMENT'] = control_id_req;
-        controls[control_id]['DESCRIPTION'] = "";
-
-
-    } else if (controls[control_id]['DESCRIPTION'] != "") {
-        // Append Description
-        controls[control_id]['DESCRIPTION'] += " " + line;
-        // console.log("CONTROL DESC APPD: " + control_id + " : " + controls[control_id]['DESCRIPTION']);
-
-    } else if (controls[control_id]['DOMAIN'] && controls[control_id]['DOMAIN_ABBR'] && controls[control_id]['LEVEL'] && controls[control_id]['CONTROL_ID'] && controls[control_id]['CONTROL_NAME'] && controls[control_id]['CONTROL_REQUIREMENT']) {
-        // Initialize Description
-        controls[control_id]['DESCRIPTION'] = line;
-        // console.log("CONTROL DESC INIT: " + control_id + " : " + controls[control_id]['DESCRIPTION']);
-
-    } else {
-        console.log("ERROR: UNMATCHED LINE: " + line);
-    }
-}
-    
-
-// console.log(JSON.stringify(controls, null, 2));
-
-// JSON File: By Controls
-console.log("JSON File: By Controls");
-console.log ("   Writting: cmmc_2.13_controls_by_control.json");
-fs.writeFileSync('cmmc_2.13_controls_by_control.json', JSON.stringify(controls, null, 2));
-
-// CSV File: By Controls
-let csv = '';
-const col_order = ['DOMAIN_ABBR', 'DOMAIN', 'LEVEL', 'CONTROL_REQUIREMENT', 'CONTROL_ID', 'CONTROL_NAME', 'DESCRIPTION'];
-
-for (let i = 0; i < col_order.length; i++) {
-    if (i == col_order.length - 1) {
-        csv += '"' + col_order[i] + '"' + '\n';
-    } else {
-        csv += '"' + col_order[i] + '"' + ','; 
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES'] = {}
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF'] = path.join(__dirname, config.DIRECTORIES.INPUT_DIR, doc_filename);
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['TXT'] = path.join(__dirname, config.DIRECTORIES.OUTPUT_DIR, "CMMC_V" + ver + "_" + doc_filename.replace(RegExp(".pdf$"), ".txt"));
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON'] = path.join(__dirname, config.DIRECTORIES.OUTPUT_DIR, "CMMC_V" + ver + "_" + doc_filename.replace(RegExp(".pdf$"), ".json"));
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['CSV'] = path.join(__dirname, config.DIRECTORIES.OUTPUT_DIR, "CMMC_V" + ver + "_" + doc_filename.replace(RegExp(".pdf$"), ".csv"));
+        config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['MD'] = path.join(__dirname, config.DIRECTORIES.OUTPUT_DIR, "CMMC_V" + ver + "_" + doc_filename.replace(RegExp(".pdf$"), ".md"));
     }
 }
 
-for (let i = 0; i < Object.keys(controls).length; i++) {
-    let control = Object.keys(controls)[i];
-    for (let j = 0; j < col_order.length; j++) {
-        if (j == col_order.length - 1) {
-            csv += '"' + controls[control][col_order[j]] + '"' + '\n';
-        } else {
-            csv += '"' + controls[control][col_order[j]] + '"' + ',';
+
+// Get mode from command line argument
+config["MODE"] =  process.argv[2];
+
+switch (config.MODE) {
+    case "setup":
+        cmmc_setup();
+        break;
+    case "parse":
+        cmmc_parse();
+        break;
+    case "gendocs":
+        cmmc_gendocs();
+        break;
+    default:
+        cmmc_useage();
+        break;
+}
+
+
+// console.log("DEBUG: Config: " + JSON.stringify(config, null, 2));
+
+// ====================== Functions ======================
+
+// Print Usage
+function cmmc_useage() {
+    console.log()
+    console.log("################################################################");
+    console.log("Usage: node index.js <setup|parse>");
+    console.log()
+    console.log("# Setup:  Download PDF's and convert to text formats");
+    console.log("- node index.js setup");
+    console.log()
+    console.log("# Parse:  Parse PDF's and convert to JSON, CSV and Markdown formats");
+    console.log("- node index.js parse");
+    console.log("################################################################");
+
+}
+
+// Initialize:  Download PDF's and convert to text formats
+function cmmc_setup() {
+    // Ensure Directories Exist
+    for (let dir in config.DIRECTORIES) {
+        if (!fs.existsSync(config.DIRECTORIES[dir])) {
+            fs.mkdirSync(config.DIRECTORIES[dir]);
         }
     }
-}
-
-console.log("CSV File: By Controls");
-console.log ("   Writting: cmmc_2.13_controls_by_control.csv");
-fs.writeFileSync('cmmc_2.13_controls_by_control.csv', csv);
-
-// JSON File: By Domains
-let controls_by_domain = {};
-for (control_id in controls) {
-    if (!controls_by_domain.hasOwnProperty(controls[control_id]['DOMAIN_ABBR'])) {
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']] = {};
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['DOMAIN'] = controls[control_id]['DOMAIN'];
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'] = {}
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][1] = {};
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][2] = {};
-        controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][3] = {};
-    }
-
-    controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][ controls[control_id]['LEVEL'] ][control_id] = {};
-    controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][ controls[control_id]['LEVEL'] ][control_id]['CONTROL_ID'] = controls[control_id]['CONTROL_ID'];
-    controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][ controls[control_id]['LEVEL'] ][control_id]['CONTROL_NAME'] = controls[control_id]['CONTROL_NAME'];
-    // controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][ controls[control_id]['LEVEL'] ][control_id]['CONTROL_REQUIREMENT'] = controls[control_id]['CONTROL_REQUIREMENT'];
-    controls_by_domain[controls[control_id]['DOMAIN_ABBR']]['LEVEL'][ controls[control_id]['LEVEL'] ][control_id]['DESCRIPTION'] = controls[control_id]['DESCRIPTION'];
-}
- 
-console.log("JSON File: By Domains");
-console.log ("   Writting: cmmc_2.13_controls_by_domain.json");
-fs.writeFileSync('cmmc_2.13_controls_by_domain.json', JSON.stringify(controls_by_domain, null, 2));
-
-// JSON File: By Levels
-let controls_by_level = {};
-controls_by_level['LEVEL'] = {};
-
-for (control_id in controls) {
-    let level       = controls[control_id]['LEVEL'];
-    let domain_abbr = controls[control_id]['DOMAIN_ABBR'];
-
-    // console.log("LEVEL: " + level + " : " + domain_abbr + " : " + control_id);
-
-    if (!controls_by_level['LEVEL'].hasOwnProperty(level)) {
-        controls_by_level['LEVEL'][ level ] = {};
-        if (level == 2 && !controls_by_level['LEVEL'].hasOwnProperty('3')) { controls_by_level['LEVEL']['3'] = {}; }
-    }
-
-    if (!controls_by_level['LEVEL'][ level ].hasOwnProperty('CONTROL_COUNT')) {
-        controls_by_level['LEVEL'][ level ]['CONTROL_COUNT'] = 0;
-        if (level == 2 && !controls_by_level['LEVEL']['3'].hasOwnProperty('CONTROL_COUNT')) { controls_by_level['LEVEL']['3']['CONTROL_COUNT'] = 0; }
-    }
-
-    controls_by_level['LEVEL'][ level ]['CONTROL_COUNT']++;
-    if (level == 2) { controls_by_level['LEVEL']['3']['CONTROL_COUNT']++; }
-
-    if (!controls_by_level['LEVEL'][ level ].hasOwnProperty(domain_abbr)) {
-        controls_by_level['LEVEL'][ level ][domain_abbr] = {};
-        if (level == 2 && !controls_by_level['LEVEL']['3'].hasOwnProperty(domain_abbr)) { controls_by_level['LEVEL']['3'][domain_abbr] = {}; }
-    }
-    controls_by_level['LEVEL'][ level ][domain_abbr]['DOMAIN'] = controls[control_id]['DOMAIN'];
-    if (level == 2) { controls_by_level['LEVEL']['3'][domain_abbr]['DOMAIN'] = controls[control_id]['DOMAIN']; }
-
-    if (!controls_by_level['LEVEL'][ level ][ domain_abbr ].hasOwnProperty('CONTROL')) {
-        controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'] = {};
-        if (level == 2 && !controls_by_level['LEVEL']['3'][ domain_abbr ].hasOwnProperty('CONTROL')) { controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'] = {}; }
-    }
-
-    if (!controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'].hasOwnProperty(control_id)) {
-        controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ] = {};
-        if (level == 2 && !controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'].hasOwnProperty(control_id)) { controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ] = {}; }
-    }
-
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_ID'] = control_id;
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_NAME'] = controls[control_id]['CONTROL_NAME'];
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['DOMAIN'] = controls[control_id]['DOMAIN'];
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['DOMAIN_ABBR'] = controls[control_id]['DOMAIN_ABBR'];
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_REQUIREMENT'] = controls[control_id]['CONTROL_REQUIREMENT'];
-    controls_by_level['LEVEL'][ level ][ domain_abbr ]['CONTROL'][ control_id ]['DESCRIPTION'] = controls[control_id]['DESCRIPTION'];
-
-    if (level == 2) {
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_ID'] = control_id;
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_NAME'] = controls[control_id]['CONTROL_NAME'];
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['DOMAIN'] = controls[control_id]['DOMAIN'];
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['DOMAIN_ABBR'] = controls[control_id]['DOMAIN_ABBR'];
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['CONTROL_REQUIREMENT'] = controls[control_id]['CONTROL_REQUIREMENT'];
-        controls_by_level['LEVEL']['3'][ domain_abbr ]['CONTROL'][ control_id ]['DESCRIPTION'] = controls[control_id]['DESCRIPTION'];
-    }
-}
- 
-console.log("JSON File: By Levels");
-console.log ("   Writting: cmmc_2.13_controls_by_level.json");
-fs.writeFileSync('cmmc_2.13_controls_by_level.json', JSON.stringify(controls_by_level, null, 2));
 
 
- // Controls by Control Markdown
- // Header 1:  Domain
- // Header 2:  Level
- // Header 3:  Control ID
+    // Download Document Sources from URLs
+    console.log("INFO: ====== Fetching Source PDF's ======");
 
-let cmmc_controls_markdown = "# CMMC 2.13 Controls\n\n";
-cmmc_controls_markdown += "- Reference: https://dodcio.defense.gov/Portals/0/Documents/CMMC/ModelOverviewv2.pdf\n\n";
+    for (let ver in config.CMMC.VERSIONS) {
+        console.log("INFO: CMMC Version: " + ver);
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
 
-for (domain_abbr in domains) {
-    let domain = domains[domain_abbr];
-    cmmc_controls_markdown += "## " + domain + "(" + domain_abbr + ")" + "\n\n";
+            let url = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["URL"];
 
-    for (level in controls_by_level['LEVEL']) {
-        cmmc_controls_markdown += "### Level " + level + "\n\n";
+            // check if file already exists
+            console.log("");
+            console.log("INFO:   DOCUMENT: " + doc);
+            console.log("INFO:     URL: " + url);
+            console.log("INFO:     PDF: " + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF']);
 
-        for (control_id in controls) {
-            if (level == controls[control_id]['LEVEL'] && domain_abbr == controls[control_id]['DOMAIN_ABBR']) {
-                cmmc_controls_markdown += "#### " + control_id + " - " + controls[control_id]['CONTROL_NAME'] + "\n\n";
-                cmmc_controls_markdown += controls[control_id]['DESCRIPTION'] + "\n\n";    
+
+            if (!fs.existsSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF'])) { // and download if not
+                (async () => {
+                    try {
+                        const res = await fetch(url, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                                'Accept': 'application/pdf',
+                                'Accept-Language': 'en-US,en;q=0.9'
+                            }
+                        });
+
+                        if (!res.ok) throw new Error(`Failed to download: ${res.status} ${res.statusText}`);
+
+                        const buffer = await res.buffer();
+                        fs.writeFileSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF'], buffer);
+                        console.log(`STATUS:   ✅ DOWNLOADED: ${config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF']}`);
+                    } catch (err) {
+                        console.error(`STATUS:   ❌ ERROR: ${err.message}`);
+                    }
+                })();
+            } else {
+                console.log(`STATUS:   ✅ ALREADY EXISTS: ${config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF']}`);
             }
         }
     }
+
+    // Convert PDF Documents to Text
+    console.log()
+    console.log("INFO: ====== Parsing Source PDF's ======");
+    for (let ver in config.CMMC.VERSIONS) {
+    console.log("CMMC Version: " + ver);
+
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
+            console.log("");
+            console.log("INFO:   DOCUMENT: " + doc);
+            let pdf_file  = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['PDF'];
+            let text_file = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['TXT'];
+
+            // Set Output File Paths
+            console.log("READING:  " + pdf_file);
+
+            const dataBuffer = fs.readFileSync(pdf_file);
+            pdfParse(dataBuffer).then(data => {
+                // console.log(data.text); // plain text content
+
+                try {
+                    fs.writeFileSync(text_file, data.text); // write plain text to text_file
+                    console.log(`STATUS: ✅ WROTE: ${text_file}`);
+                } catch (err) {
+                    console.error(`STATUS: ❌ ERROR: ${err.message}`);
+                }
+            });
+        }
+    }      
 }
 
-console.log("JSON File: By Controls");
-console.log ("   Writting: cmmc_2.13_controls_by_control.md");
-fs.writeFileSync('cmmc_2.13_controls_by_control.md', cmmc_controls_markdown);
+
+function cmmc_parse() {
+
+    // Vars
+    let controls            = {};
+    let domain_map          = {};
+    let domain              = '';
+    let domain_abbr         = '';
+    let level               = '';
+    let tlevel              = '';
+    let control_id          = '';
+    let control_id_dom_abbr = '';
+    let control_id_level    = '';
+    let control_id_req      = '';
+    let control_id_name     = '';
+    let control_id_desc     = '';
+    let control_id_flag     = false;
+    let control_name_flag   = false;
+    let control_desc_flag   = false;
+    let assmt_obj           = '';
+    let assmt_obj_flag      = false;
+    let ass_obj_index       = '';
+    let ass_obj_text        = '';
+
+    console.log()
+    console.log("INFO: ====== Parsing Source PDF's ======");
+
+    for (let ver in config.CMMC.VERSIONS) {
+       console.log("CMMC Version: " + ver);
+
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
+            if (config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["PARSE"]) {
+                console.log("");
+                console.log("INFO:   DOCUMENT: " + doc);
+    
+                controls = {}; // reset controls for each doc
+                controls['DOCUMENT'] = {}
+                controls['DOCUMENT']['CMMC'] = "Cybersecurity Maturity Model Certification"; 
+                controls['DOCUMENT']["CMMC_VERSION"] = ver;
+                controls['DOCUMENT']["TITLE"]        = doc;
+                controls['DOCUMENT']["ABBR"]         = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["ABBR"];
+                controls['DOCUMENT']["URL"]          = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["URL"]; 
+                controls['DOCUMENT']["DATE"]         = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["DATE"];
+                controls['DOCUMENT']["DoDID"]        = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["DoDID"];
+                controls['DOCUMENT']["ZRIN"]         = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["ZRIN"];
+                controls['DOCUMENT']["OTHER_ID"]     = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["OTHER_ID"];
+                controls['DOCUMENT']["CONTROL_COUNT"] = 0 
+
+                controls['CONTROLS'] = {}
+
+                let regx = {};
+                for (let rx in config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["REGEX"]) {
+                    regx[rx] = RegExp(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["REGEX"][rx]);
+                }            
+
+                // DEBUG: Print Regex Patterns
+                // console.log("INFO:   REGEX PATTERNS:");
+                // for (let key in regx) {
+                //     console.log("\t\t" + `${key}:    ${regx[key].toString()}`);
+                // }
+                // console.log()
+
+                // Load Document Text File
+                let doc_text = '';
+                let lines = [];
+
+                console.log("READING:  " + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["FILES"]["TXT"]);
+                try {
+                    doc_text = fs.readFileSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["FILES"]["TXT"], 'utf-8');
+                    lines = doc_text.split("\n");
+                    console.log(`STATUS:   ✅ LOADED: ${path.join(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]["FILES"]["TXT"])}`);
+                    console.log("INFO:     LINE COUNT: " + lines.length);
+                } catch (err) {
+                    console.error(`STATUS:   ❌ ERROR: ${err.message}`);
+                }
+
+                console.log();
+                console.log("====================================================================")   
+
+                // Parse Document Lines
+                for (let i = 0; i < lines.length; i++) {
+                    // Initialize New Line
+                    let line_match = false
+                    let line = lines[i];
+
+                    // Sanitizing Text
+                    // Remove trailing whitespace
+                    line = line.replace(/\s+$/gm, '');
+
+                    // Replace all EN DASH (U+2013) and EM DASH (U+2014) with -
+                    line = line.replace(/[\u2013\u2014]/g, '-');
+
+                    // Replace multiple spaces/tabs with a single space
+                    // line = line.replace(/\s{2,}/g, ' ');
+
+                    // console.log("DEBUG: LINE " + (i+1) + ": [" + line + "]");
+
+                    // For each Regx
+                    for (let rx in regx) {
+                        if (!line_match) {
+                            if (line.match(regx[rx])) {
+                                let parts = line.match(regx[rx])
+
+                                // DEBUG
+                                // if (!rx.match("^IGNORE_") && domain != '') {
+                                // if (line_match) {
+                                //     console.log();
+                                //     console.log("DEBUG: LINE " + i + ": [" + line + "]")
+                                //     // console.log("DEBUG: LINE " + i + ": [" + line + "] <=> [" + lines[i] + "]");
+                                //     console.log("DEBUG:   MATCHED REGEX: " + rx);
+
+                                //     console.log("DEBUG:   LINE: " + i);
+                                //     console.log("DEBUG:   DOMAIN:              " + domain);
+                                //     console.log("DEBUG:   DOMAIN ABBR:         " + domain_abbr);
+                                //     // console.log("DEBUG:   LEVEL:               " + level);
+                                //     console.log("DEBUG:   CONTROL ID:          " + control_id);
+                                //     console.log("DEBUG:   CONTROL ID DOM ABBR: " + control_id_dom_abbr);
+                                //     console.log("DEBUG:   CONTROL ID LEVEL:    " + control_id_level);
+                                //     console.log("DEBUG:   CONTROL ID REQ:      " + control_id_req);
+                                // }
+
+                                switch (config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['ABBR']) {
+                                    case "PMO": // CMMC Program Model Overview
+                                    switch (rx) {
+                                        case "CMMC_DOMAIN":
+                                            line_match = true;
+                                            domain                  = parts[1];
+                                            domain_abbr             = parts[2];
+                                            domain_map[domain_abbr] = domain;
+                                            break;
+
+                                        case "CMMC_LEVEL":
+                                            line_match = true;
+                                            level = parts[1];
+                                            tlevel = "L" + level;
+                                            break;
+
+                                        case "CMMC_CONTROL_ID":
+                                            if (domain && level) {
+                                                line_match = true;
+                                                control_id_dom_abbr = parts[1];
+                                                control_id_level    = parts[2];
+                                                control_id_req      = parts[3];
+                                                control_id          = control_id_dom_abbr + ".L" + control_id_level + "-" + control_id_req;
+
+                                                control_name_flag   = true;
+                                                control_desc_flag   = false;
+
+                                                if (!controls["CONTROLS"].hasOwnProperty(tlevel)) {
+                                                    controls["CONTROLS"][tlevel] = {}
+                                                }
+
+                                                if (!controls["CONTROLS"][tlevel].hasOwnProperty(control_id)) {
+                                                    controls["CONTROLS"][tlevel][control_id] = {}
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_DOMAIN"]         = domain_map[control_id_dom_abbr];
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_DOMAIN_ABBR"]    = control_id_dom_abbr;
+                                                    controls["CONTROLS"][tlevel][control_id]["CMMC_LEVEL"]          = control_id_level;
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_ID"]          = control_id;
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"]        = "";
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_DESCRIPTION"] = "";
+
+                                                    if (lines[i + 1].match(regx["CONTROL_NAME_W_BRACKETS"])) { 
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i];
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    } else if (lines[i + 1].match(regx["CONTROL_NAME_BEGIN"]) && lines[i + 2].match(regx["CONTROL_NAME_END"])) {
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i] + " " + lines[++i];   
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    } else {
+                                                        controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = lines[++i];
+                                                        control_name_flag = false;
+                                                        control_desc_flag = true;
+                                                    }
+
+                                                    // Remove leading and trailing whitespace
+                                                    controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"] = controls["CONTROLS"][tlevel][control_id]["CONTROL_NAME"].trim();
+
+                                                }
+                                            }
+                                        break;
+
+                                        // case "CONTROL_NAME_END":
+                                        //     if (control_name_flag) {
+                                        //         line_match = true;
+                                        //         controls["CONTROLS"][control_id]["CONTROL_NAME"] += " " + line;
+                                        //         control_name_flag = false;
+                                        //         control_desc_flag = true;
+                                        //     }
+                                        //     break;
+
+                                        case "PARAGRAPH_LINE":
+                                            // 1. Safety check: Are we accidentally in a section that should end the objective list?
+                                            if (assmt_obj_flag) {
+                                                // Stop if we hit common "End of Objectives" headers found in the PDF
+                                                if (line.match(/POTENTIAL ASSESSMENT METHODS/i) || 
+                                                    line.match(/DISCUSSION/i) || 
+                                                    line.match(/REVISION \d CONTROL/i)) {
+                                                    assmt_obj_flag = false;
+                                                    break; 
+                                                }
+                                            }
+                                        
+                                            if (control_id && control_id_flag && !assmt_obj_flag) {
+                                                line_match = true;
+                                                controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
+                                            } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) {
+                                                line_match = true;
+                                                // 2. Add a trim to handle the whitespace issues you saw in your JSON output
+                                                let cleanLine = line.replace(/\s+/g, ' ').trim();
+                                                controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + cleanLine;
+                                            }
+                                            break;
+
+                                        case "IGNORE_PAGE_NUMBER":
+                                            // console.log("DEBUG:   Skipping Page Nubmer Line");
+                                            break;
+
+                                        case "IGNORE_FOOTER":
+                                            // console.log("DEBUG:   Skipping Footer Line");
+                                            break;
+
+                                        case "IGNORE_WHITESPACE":
+                                                // console.log("DEBUG:   Skipping Whitespace Line");
+                                            break;
+                                                
+                                        default:
+                                            // console.log("DEBUG:   Default Skipping Line");
+                                            break;
+
+                                    } // Close switch
+                                    break;
+
+                                    case "L1SG": // CMMC Scoping Guide - Level 1
+                                    
+                                        break;
+
+                                    case "L1AG": // CMMC Assessment Guide - Level 1
+                                        switch (rx) {
+                                            case "CMMC_DOMAIN":
+                                                line_match = true;
+                                                domain                  = parts[1];
+                                                domain_abbr             = parts[2];
+                                                domain_map[domain_abbr] = domain;
+                                                break;
+
+
+                                            case "CMMC_CONTROL_ID":
+                                                if (domain) {
+                                                    line_match = true;
+                                                    control_id_dom_abbr = parts[1];
+                                                    control_id_level    = parts[2];
+                                                    control_id_req      = parts[3];
+                                                    control_id_name     = parts[4];
+                                                    control_id          = control_id_dom_abbr + ".L" + control_id_level + "-" + control_id_req;
+                                                    control_id_desc     = "";
+                                                    control_id_flag     = true;  
+
+                                                    controls["CONTROLS"][control_id] = {}
+                                                    controls["CONTROLS"][control_id]["CMMC_DOMAIN"]             = domain_map[control_id_dom_abbr];
+                                                    controls["CONTROLS"][control_id]["CMMC_DOMAIN_ABBR"]        = control_id_dom_abbr;
+                                                    controls["CONTROLS"][control_id]["CMMC_LEVEL"]              = control_id_level;
+                                                    controls["CONTROLS"][control_id]["CONTROL_ID"]              = control_id;
+                                                    controls["CONTROLS"][control_id]["CONTROL_NAME"]         = control_id_name;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]  = control_id_desc;
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"]   = {};
+                                                }
+                                                break;
+
+                                            case "ASSESSEMENT_OBJECTIVES_BEGIN":
+                                                if (control_id) {
+                                                    line_match = true;
+                                                    assmt_obj_flag = true;
+                                                    control_id_flag = false;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
+                                                }
+                                                break;
+                                                
+                                            case "ASSESSEMENT_OBJECTIVE":
+                                                if (assmt_obj_flag) {
+                                                    line_match = true;
+                                                    assmt_obj = parts[1];
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] = parts[2];
+                                                }
+                                                break;
+
+                                            case "ASSESSEMENT_OBJECTIVES_END":
+                                                if (control_id && assmt_obj_flag) {
+                                                    line_match = true;
+                                                    assmt_obj_flag = false;
+                                                }
+                                                break;
+
+                                            case "PARAGRAPH_LINE":
+                                                if (control_id && control_id_flag && !assmt_obj_flag) { // Control ID Description
+                                                    line_match = true;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
+                                                } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) { // Assessment Objective
+                                                    line_match = true;
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + line;
+                                                    // FIXME: Text added to last ASSESSMENT_OBJECTIVE:  13 Determine if:
+
+
+                                                } else {
+                                                    // Ignore Line
+                                                }
+
+                                                break;
+                                            case "IGNORE_PAGE_NUMBER":
+                                                // console.log("DEBUG:   Skipping Page Nubmer Line");
+                                                break;
+
+                                            case "IGNORE_FOOTER":
+                                                // console.log("DEBUG:   Skipping Footer Line");
+                                                break;
+
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                                
+                                            default:
+                                                // console.log("DEBUG:   Default Skipping Line");
+                                                break;
+
+                                        } // Close switch
+                                        break;
+
+                                    case "L2SG": // CMMC Scoping Guide - Level 2
+
+                                        break;
+
+                                    case "L2AG":  // CMMC Assessment Guide - Level 2
+                                        switch (rx) {
+                                            case "CMMC_DOMAIN":
+                                                line_match = true;
+                                                domain                  = parts[1];
+                                                domain_abbr             = parts[2];
+                                                domain_map[domain_abbr] = domain;
+                                                break;
+
+
+                                            case "CMMC_CONTROL_ID":
+                                                let tmp_ctl_id = parts[1] + ".L" + parts[2] + "-" + parts[3];
+                                                if (domain && !controls['CONTROLS'].hasOwnProperty(tmp_ctl_id)) {
+                                                    line_match = true;
+                                                    control_id_dom_abbr = parts[1];
+                                                    control_id_level    = parts[2];
+                                                    control_id_req      = parts[3];
+                                                    control_id_name     = parts[4];
+                                                    control_id          = control_id_dom_abbr + ".L" + control_id_level + "-" + control_id_req;
+                                                    control_id_desc     = "";
+                                                    control_id_flag     = true;  
+
+                                                    controls["CONTROLS"][control_id] = {}
+                                                    controls["CONTROLS"][control_id]["CMMC_DOMAIN"]      = domain_map[control_id_dom_abbr];
+                                                    controls["CONTROLS"][control_id]["CMMC_DOMAIN_ABBR"] = control_id_dom_abbr;
+                                                    controls["CONTROLS"][control_id]["CMMC_LEVEL"]       = control_id_level;
+                                                    controls["CONTROLS"][control_id]["CONTROL_ID"]       = control_id;
+                                                    controls["CONTROLS"][control_id]["CONTROL_NAME"]  = control_id_name;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]  = control_id_desc;
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"] = {};
+                                                }
+                                                break;
+
+                                            case "ASSESSEMENT_OBJECTIVES_BEGIN":
+                                                if (control_id) {
+                                                    line_match = true;
+                                                    assmt_obj_flag = true;
+                                                    control_id_flag = false;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] = String(controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"]).replace(/^\s+|\s+$/g, '') // Remove Leading and Trailing Whitespace
+                                                }
+                                                break;
+                                                
+                                            case "ASSESSEMENT_OBJECTIVE":
+                                                if (assmt_obj_flag) {
+                                                    line_match = true;
+                                                    assmt_obj = parts[1];
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] = parts[2];
+                                                }
+                                                break;
+
+                                            case "ASSESSEMENT_OBJECTIVES_END":
+                                                if (control_id && assmt_obj_flag) {
+                                                    line_match = true;
+                                                    assmt_obj_flag = false;
+                                                }
+                                                break;
+
+                                            case "PARAGRAPH_LINE":
+                                                if (control_id && control_id_flag && !assmt_obj_flag) { // Control ID Description
+                                                    line_match = true;
+                                                    controls["CONTROLS"][control_id]["CONTROL_DESCRIPTION"] += " " + line;        
+                                                } else if (assmt_obj_flag && controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj]) { // Assessment Objective
+                                                    line_match = true;
+                                                    controls["CONTROLS"][control_id]["ASSESSMENT_OBJECTIVES"][assmt_obj] += " " + line;
+                                                    
+                                                } else {
+                                                    // Ignore Line
+                                                }
+
+                                                break;
+                                            case "IGNORE_PAGE_NUMBER":
+                                                // console.log("DEBUG:   Skipping Page Nubmer Line");
+                                                break;
+    
+                                            case "IGNORE_FOOTER":
+                                                // console.log("DEBUG:   Skipping Footer Line");
+                                                break;
+
+                                            case "IGNORE_WHITESPACE":
+                                                    // console.log("DEBUG:   Skipping Whitespace Line");
+                                                break;
+                                                
+                                            default:
+                                                // console.log("DEBUG:   Default Skipping Line");
+                                                break;
+
+                                        } // Close switch
+                                        break;
+
+                                    case "L3SG": // CMMC Scoping Guide - Level 3
+                                        break;
+
+                                    case "L3AG": // CMMC Assessment Guide - Level 3
+                                        break;
+
+                                    default:
+                                        console.log("DEBUG:   UNKNOWN DOCUMENT: " + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['ABBR']);
+                                        break;
+                                } // Close switch
+
+
+                                // DEBUG
+                                
+                                if (line_match) {
+                                    // console.log();
+                                    // console.log("DEBUG: LINE " + (i+1) + ": [" + line + "]")
+
+                                    // console.log("DEBUG:   MATCHED REGEX:     " + rx + ":       " + `${regx[rx].toString()}`);
+
+                                    // console.log("DEBUG:   DOMAIN:              " + domain);
+                                    // console.log("DEBUG:   DOMAIN ABBR:         " + domain_abbr);
+
+                                    // console.log("DEBUG:   LEVEL:               " + level);
+
+                                    // console.log("DEBUG:   CONTROL ID:          " + control_id);
+                                    // console.log("DEBUG:   CONTROL ID DOM ABBR: " + control_id_dom_abbr);
+                                    // console.log("DEBUG:   CONTROL ID LEVEL:    " + control_id_level);
+                                    // console.log("DEBUG:   CONTROL ID REQ:      " + control_id_req);
+
+                                    // if (control_id) {
+                                    //     console.log(JSON.stringify(controls["CONTROLS"][control_id], null, 2));
+                                    // }
+
+                                    // console.log("DEBUG:   ASSMT OBJ FLAG: " + assmt_obj_flag);
+                                    // console.log("DEBUG:   control_name_flag: " + control_id_flag);
+                                    // console.log("DEBUG:   control_desc_flag: " + control_desc_flag);
+
+                                }
+
+                            } // Close REGX MATCH
+
+                        } // Close LINE MATCH
+
+                    } // Close REGX
+
+                } // Close LINE 
+
+                if (controls['DOCUMENT']['ABBR'].match(/^L[1-3]AG$/)) {
+                    controls['DOCUMENT']["CONTROL_COUNT"] = Object.keys(controls["CONTROLS"]).length;                    
+                } else if (controls['DOCUMENT']['ABBR'] == "PMO") {
+                    controls['DOCUMENT']["CONTROL_COUNT"] = {}
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L1"] = Object.keys(controls["CONTROLS"]["L1"]).length;
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L2"] = Object.keys(controls["CONTROLS"]["L2"]).length;
+                    controls['DOCUMENT']["CONTROL_COUNT"]["L3"] = Object.keys(controls["CONTROLS"]["L3"]).length;   
+                }
+                    
+
+                // DEBUG
+                // console.log();
+                // console.log(JSON.stringify(controls, null, 2));
+
+                // Write JSON File for Document
+                try {
+                    fs.writeFileSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON'], JSON.stringify(controls, null, 2));
+                    console.log(`STATUS: ✅ WROTE: ` + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON']);
+                } catch (err) {
+                    console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+                }
+
+            } // Close PARSE
+
+        } // Close Document
+
+    }  // Close CMMC Version
+
+} // Close Parse Function
+
+
+
+function cmmc_gendocs() {
+    // Read JSON Files for PARSE = true documents and generate CSV and Markdown files
+    console.log("INFO: ====== Generating Documents ======");
+
+    // Vars
+
+    let controls = {};
+
+    for (let ver in config.CMMC.VERSIONS) {
+        controls[ver] = {};
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {            
+            if (config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['PARSE'] == true) {
+                // Read JSON File to controls object
+                try {
+                    let json = JSON.parse(fs.readFileSync(config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON'], 'utf-8'));
+                    console.log(`STATUS: ✅ READ: ` + config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']['JSON']);
+
+                    controls[ver][ json['DOCUMENT']['ABBR'] ] = {};
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['DOCUMENT'] = json['DOCUMENT'];
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['DOCUMENT']['FILE'] = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['FILES']
+                    controls[ver][ json['DOCUMENT']['ABBR'] ]['CONTROLS'] = json['CONTROLS'];
+
+
+                } catch (err) {
+                    console.error(`STATUS: ❌ ERROR: ${err.message}`);
+                }
+            }
+        }
+    }
+
+    // console.log(JSON.stringify(controls, null, 2));
+
+
+    // Generate CSV File for Documents
+
+    // Generate Markdown File for Documents
+
+    for (let ver in config.CMMC.VERSIONS) {
+        for (let doc in config.CMMC.VERSIONS[ver].DOCUMENTS) {
+            let abbr = config.CMMC.VERSIONS[ver].DOCUMENTS[doc]['ABBR'];
+            switch (abbr) {
+                case "PMO":
+                    cmmc_gen_pmo_md(controls[ver][abbr]);
+                    break;
+                case "L1AG":
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
+                    break;
+                case "L2AG":
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
+                    break;
+                case "L3AG":
+                    cmmc_gen_ag_md(controls[ver][abbr]);
+                    cmmc_gen_ag_csv(controls[ver][abbr]);
+                    break;
+            }
+        }
+    }
+
+}
+
+function cmmc_gen_pmo_md(controls) {
+    // console.log(JSON.stringify(controls, null, 2));
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " Markdown");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['MD']);
+
+    let md = "";
+
+    md += "# " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "\n";
+    md += "- **TITLE:**     " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "- **FRAMEWORK:** " + controls['DOCUMENT']['CMMC'] + "\n";
+    md += "- **VERSION:**   " + controls['DOCUMENT']['CMMC_VERSION'] + "\n";
+    md += "- **DATE:**      " + controls['DOCUMENT']['DATE'] + "\n";
+    md += "- **ZRIN:**      " + controls['DOCUMENT']['ZRIN'] + "\n";
+    md += "- **OTHER_ID:**  " + controls['DOCUMENT']['OTHER_ID'] + "\n";
+    md += "- **URL:**       " + controls['DOCUMENT']['URL'] + "\n";
+    md += "\n";
+
+    md += "## Control Counts\n";
+    md += "- **Level 1:** " + controls['DOCUMENT']['CONTROL_COUNT']["L1"] + " Controls\n";
+    md += "- **Level 2:** " + controls['DOCUMENT']['CONTROL_COUNT']["L2"] + " Controls\n";
+    md += "- **Level 3:** " + controls['DOCUMENT']['CONTROL_COUNT']["L3"] + " Controls\n";
+    md += "\n";
+
+    md += "## Controls\n";
+    md += "\n";
+
+
+    let levels = ["L1", "L2", "L3"];
+    for (let l in levels) {
+        if (l > 0) {
+            md += "---\n";
+        }
+        md += "### Level " + levels[l] + "\n";
+        md += "\n";
+
+        // md += "#### " + controls['CONTROLS'][ levels[l] ][ Object.keys(controls['CONTROLS'][ levels[l] ])[0] ]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][ Object.keys(controls['CONTROLS'][ levels[l] ])[0] ]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+    
+        for (let cid in controls['CONTROLS'][levels[l]]) {
+            // If first control then add domain header
+            if (cid == Object.keys(controls['CONTROLS'][ levels[l] ])[0]) {
+                md += "#### " + controls['CONTROLS'][ levels[l] ][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+                md += "\n";
+
+            }
+
+            md += "##### " + cid + " - " + controls['CONTROLS'][ levels[l] ][cid]['CONTROL_NAME'] + "\n";
+            // md += "- **Name:** " + controls['CONTROLS'][ levels[l] ][cid]['CONTROL_NAME'] + "\n";
+            // md += "- **Domain:** " + controls['CONTROLS'][ levels[l] ][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][levels[l]][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+
+            md += "\n";
+            // md += "**Description**" + "\n";
+            md += "###### Description" + "\n";
+
+            md += "\n";
+            md += controls['CONTROLS'][ levels[l] ][cid]['CONTROL_DESCRIPTION']
+
+            md += "\n";
+            md += "\n";
+        }
+    }
+
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['MD'], md);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['MD']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}
+
+function cmmc_gen_ag_md(controls) {    
+    // console.log(JSON.stringify(controls, null, 2));
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " Markdown");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['MD']);
+
+    let md = "";
+
+    md += "# " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "\n";
+    md += "- **TITLE:**     " + controls['DOCUMENT']['TITLE'] + "\n";
+    md += "- **FRAMEWORK:** " + controls['DOCUMENT']['CMMC'] + "\n";
+    md += "- **VERSION:**   " + controls['DOCUMENT']['CMMC_VERSION'] + "\n";
+    md += "- **DATE:**      " + controls['DOCUMENT']['DATE'] + "\n";
+    md += "- **ZRIN:**      " + controls['DOCUMENT']['ZRIN'] + "\n";
+    md += "- **OTHER_ID:**  " + controls['DOCUMENT']['OTHER_ID'] + "\n";
+    md += "- **URL:**       " + controls['DOCUMENT']['URL'] + "\n";
+    md += "- **Control Couts:** " + controls['DOCUMENT']['CONTROL_COUNT'] + "\n";
+    md += "\n";
+
+    md += "# Controls\n";
+    md += "\n";
+
+    for (let cid in controls['CONTROLS']) {
+        // If first control then add domain header
+        if (cid == Object.keys(controls['CONTROLS'])[0]) {
+            md += "## " + controls['CONTROLS'][cid]['CMMC_DOMAIN'] + " (" + controls['CONTROLS'][cid]['CMMC_DOMAIN_ABBR'] + ")" + "\n";
+            md += "\n";
+        }
+
+        md += "#### " + cid + " - " + controls['CONTROLS'][cid]['CONTROL_NAME'] + "\n";
+        md += "\n";
+        md += controls['CONTROLS'][cid]['CONTROL_DESCRIPTION']
+        md += "\n";
+
+        // ASSESSMENT OBJECTIVES
+        md += "##### Assessment Objectives\n";
+        for (let ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+            md += "[**" + ao + "**] - " + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\n";
+            md += "\n";
+        }
+    }
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['MD'], md);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['MD']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}
+
+
+
+function cmmc_gen_ag_csv(controls) {
+    // console.log(JSON.stringify(controls, null, 2));
+    console.log("INFO: Generating " + controls['DOCUMENT']['TITLE'] + " CSV");
+    console.log("INFO: to: " + controls['DOCUMENT']['FILE']['CSV']);
+
+    let csv = "";
+    let csv_columns = ["CTRL_INDEX", "ASMT_OBJ_INDEX", "CMMC_LEVEL", "CMMC_DOMAIN_ABBR", "CMMC_DOMAIN", "CONTROL_ID", "CONTROL_NAME", "ASSESSMENT_OBJECTIVE", "ASSESSMENT_OBJECTIVE_DESCRIPTION"];
+
+    let col_map = {
+        "CTRL_INDEX"            : "Control Index",
+        "ASMT_OBJ_INDEX"        : "Assessment Objective Index",
+        "CMMC_LEVEL"            : "CMMC Level",
+        "CMMC_DOMAIN_ABBR"      : "CMMC Domain Abbreviation",
+        "CMMC_DOMAIN"           : "CMMC Domain",
+        "CONTROL_ID"            : "Control ID",
+        "CONTROL_NAME"          : "Control Name",
+        "ASSESSMENT_OBJECTIVE"  : "Assessment Objective",
+        "ASSESSMENT_OBJECTIVE_DESCRIPTION"  : "Assessment Objective Description",
+    }
+
+    // Debug
+    // console.log("DEBUG: " + Object.keys(controls['CONTROLS']));
+    // for (let cid in controls['CONTROLS']) {
+    //     console.log("DEBUG: " + cid);
+    //     console.log("DEBUG: " + Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']));
+    //     for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+    //         console.log("DEBUG: " + cid + " - " + ao);
+    //     }
+    // }
+
+    // Header Line
+    for (let col in csv_columns) {
+        // csv += "\"" + csv_columns[col] + "\",";
+        csv += "\"" + col_map[csv_columns[col]] + "\",";
+    }
+    // Remove last comma
+    csv = csv.slice(0, -1);
+    csv += "\n";
+
+    let ctl_idx = 0;
+    let ao_idx  = 0;
+    let first_ao = false;
+
+    for (let cid in controls['CONTROLS']) {
+        ctl_idx++;
+        for (ao in controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES']) {
+            ao_idx++;
+            console.log("DEBUG: " + ctl_idx + " - " + ao_idx + " - " + cid + " - " + ao);
+
+            if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                first_ao = true;
+            } else {
+                first_ao = false;
+            }
+
+            for (let col in csv_columns) {
+                console.log("DEBUG: " + col + " - " + csv_columns[col]);
+                if (first_ao) {
+                    switch ( csv_columns[col] ) {
+                        case "CTRL_INDEX":
+                            csv += "\"" + ctl_idx + "\",";
+                            break;
+
+                        case "ASMT_OBJ_INDEX":
+                            csv += "\"" + ao_idx + "\",";
+                            break;
+
+                        case "CMMC_LEVEL":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_LEVEL'] + "\",";
+                            break;
+
+                        case "CMMC_DOMAIN_ABBR":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_DOMAIN_ABBR'] + "\",";
+                            break;
+
+                        case "CMMC_DOMAIN":
+                            csv += "\"" + controls['CONTROLS'][cid]['CMMC_DOMAIN'] + "\",";
+                            break;
+
+                        case "CONTROL_ID":
+                            csv += "\"" + cid + "\",";
+                            break;
+
+                        case "CONTROL_NAME":
+                            csv += "\"" + controls['CONTROLS'][cid]['CONTROL_NAME'] + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE":
+                            csv += "\"" + ao + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE_DESCRIPTION":
+                            csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                            break;
+                    }
+                } else {
+                    switch ( csv_columns[col] ) {
+                        case "ASMT_OBJ_INDEX":
+                            csv += "\"" + ao_idx + "\",";
+                            break;
+
+                        case "ASSESSMENT_OBJECTIVE":
+                            csv += "\"" + ao + "\",";
+                            break;
+
+                            case "ASSESSMENT_OBJECTIVE_DESCRIPTION":
+                            csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                            break;
+
+                        default:
+                            csv += "\"\",";
+                    }
+                }
+
+
+
+                // if ( col <= 1 ) {
+                //     if (col == 0) {
+                //         if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                //             csv += "\"" + ctl_idx + "\",";
+                //         }
+                //     } else if (col == 1) {
+                //         csv += "\"" + ao_idx + "\",";
+                //     }
+                // } else if (col <= 6) {
+                //     if (ao == Object.keys(controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'])[0]) {
+                //         // "", delmiter CSV Header"
+                //         csv += "\"" + controls['CONTROLS'][cid][csv_columns[col]] + "\",";
+                //     } else {
+                //         csv += "\"\",";
+                //     }
+                // } else {
+                //     if (col == 7) {
+                //         csv += "\"" + ao + "\",";
+                //     } else if (col == 8) {
+                //         csv += "\"" + controls['CONTROLS'][cid]['ASSESSMENT_OBJECTIVES'][ao] + "\"\n";
+                //     }
+                // }
+            }
+        }
+    }
+
+    try {
+        fs.writeFileSync(controls['DOCUMENT']['FILE']['CSV'], csv);
+        console.log(`STATUS: ✅ WROTE: ` + controls['DOCUMENT']['FILE']['CSV']);
+    } catch (err) {
+        console.error(`STATUS: ❌ ERROR: ${err.message}`);      
+    }
+}
